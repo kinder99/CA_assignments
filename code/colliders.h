@@ -60,6 +60,8 @@ public:
     virtual bool isInside(const Particle* p) const;
     virtual bool testCollision(const Particle* p, Collision& colInfo) const;
 
+    virtual void resolveCollision(Particle* p, const Collision& col, double kElastic, double kFriction) const;
+
 protected:
     Vec3 center;
     double radius;
@@ -91,12 +93,36 @@ public:
     virtual bool isInside(const Particle* p) const ;
     virtual bool testCollision(const Particle* p, Collision& colInfo) const;
 
+    virtual void resolveCollision(Particle* p, const Collision& col, double kElastic, double kFriction) const;
+
 protected:
     Vec3 bmin;
     Vec3 bmax;
     Vec3 center;
     Vec3 size;
 };
+
+// class ColliderParticle : public Collider
+// {
+// public:
+//     ColliderParticle(){current_particle = nullptr, radius = 0, center = Vec3(0,0,0);}
+//     ColliderParticle(Particle* p, double r, Vec3 c):current_particle(p),radius(r),center(c){}
+//     virtual ~ColliderParticle(){}
+//     Particle* getParticle(){return current_particle;};
+//     void setParticle(Particle* p){this->current_particle = p;};
+//     double getRadius(){return radius;};
+//     void setRadius(double r){this->radius = r;};
+//     Vec3 getCenter(){return center;};
+//     void setCenter(Vec3 c){this->center = c;}
+
+//     virtual bool isInside(const Particle* p) const ;
+//     virtual bool testCollision(const Particle* p, Collision& colInfo) const;
+
+// protected:
+//     Particle* current_particle;
+//     double radius;
+//     Vec3 center;
+// };
 
 
 #endif // COLLIDERS_H

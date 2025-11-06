@@ -19,3 +19,15 @@ WidgetFountain::~WidgetFountain()
 double WidgetFountain::getGravity() const {
     return ui->gravity->value();
 }
+
+double WidgetFountain::getLifetime() const {
+    return ui->lifetime->value();
+}
+
+double WidgetFountain::getEmitRate() const {
+    return ui->rate->value();
+}
+
+bool WidgetFountain::getCollisions() const {
+    return ui->p_p_col->isChecked();
+}

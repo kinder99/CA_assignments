@@ -17,6 +17,7 @@ SOURCES += \
     code/forces.cpp \
     code/glutils.cpp \
     code/glwidget.cpp \
+    code/hash.cpp \
     code/integrators.cpp \
     code/main.cpp \
     code/mainwindow.cpp \
@@ -27,15 +28,18 @@ SOURCES += \
     code/scenes/scenenbody.cpp \
     code/scenes/sceneprojectiles.cpp \
     code/scenes/scenerope.cpp \
+    code/scenes/scenesph.cpp \
     code/scenes/scenetestcolliders.cpp \
     code/scenes/scenetestintegrators.cpp \
+    code/sph.cpp \
     code/widgets/widgetcloth.cpp \
     code/widgets/widgetfountain.cpp \
     code/widgets/widgetnbody.cpp \
     code/widgets/widgetprojectiles.cpp \
     code/widgets/widgetrope.cpp \
+    code/widgets/widgetsph.cpp \
     code/widgets/widgettestcolliders.cpp \
-    code/widgets/widgettestintegrators.cpp \
+    code/widgets/widgettestintegrators.cpp
 
 HEADERS += \
     code/camera.h \
@@ -44,6 +48,7 @@ HEADERS += \
     code/forces.h \
     code/glutils.h \
     code/glwidget.h \
+    code/hash.h \
     code/integrators.h \
     code/mainwindow.h \
     code/model.h \
@@ -55,15 +60,18 @@ HEADERS += \
     code/scenes/scenenbody.h \
     code/scenes/sceneprojectiles.h \
     code/scenes/scenerope.h \
+    code/scenes/scenesph.h \
     code/scenes/scenetestcolliders.h \
     code/scenes/scenetestintegrators.h \
+    code/sph.h \
     code/widgets/widgetcloth.h \
     code/widgets/widgetfountain.h \
     code/widgets/widgetnbody.h \
     code/widgets/widgetprojectiles.h \
     code/widgets/widgetrope.h \
+    code/widgets/widgetsph.h \
     code/widgets/widgettestcolliders.h \
-    code/widgets/widgettestintegrators.h \
+    code/widgets/widgettestintegrators.h
 
 FORMS += \
     forms/mainwindow.ui \
@@ -72,6 +80,7 @@ FORMS += \
     forms/widgetnbody.ui \
     forms/widgetprojectiles.ui \
     forms/widgetrope.ui \
+    forms/widgetsph.ui \
     forms/widgettestcolliders.ui \
     forms/widgettestintegrators.ui \
 

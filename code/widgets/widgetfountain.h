@@ -15,6 +15,9 @@ public:
     ~WidgetFountain();
 
     double getGravity()    const;
+    double getLifetime() const;
+    double getEmitRate() const;
+    bool getCollisions() const;
 
 signals:
     void updatedParameters();

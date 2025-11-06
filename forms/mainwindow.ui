@@ -151,6 +151,7 @@
     <addaction name="actionSceneTestIntegrators"/>
     <addaction name="actionSceneTestColliders"/>
     <addaction name="actionSceneN_body"/>
+    <addaction name="actionSceneSPH"/>
    </widget>
    <widget class="QMenu" name="menuCamera">
     <property name="title">
@@ -218,6 +219,11 @@
   <action name="actionSceneN_body">
    <property name="text">
     <string>N body</string>
+   </property>
+  </action>
+  <action name="actionSceneSPH">
+   <property name="text">
+    <string>SPH</string>
    </property>
   </action>
  </widget>

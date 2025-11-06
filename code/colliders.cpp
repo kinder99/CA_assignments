@@ -1,5 +1,6 @@
 #include "colliders.h"
 #include <cmath>
+#include <iostream>
 
 /*
  * Generic function for collision response from contact plane
@@ -51,7 +52,7 @@ bool ColliderPlane::testCollision(const Particle* p, Collision& colInfo) const
  */
 bool ColliderSphere::isInside(const Particle* p) const
 {
-    if((p->pos-this->getCenter()).dot((p->pos-this->getCenter()).transpose())>this->getRadius()){
+    if(std::sqrt((p->pos-this->getCenter()).dot((p->pos-this->getCenter()).transpose()))>this->getRadius()){
         return true;
     }
     return false;
@@ -74,10 +75,19 @@ bool ColliderSphere::testCollision(const Particle* p, Collision& colInfo) const
     }
     if(0<=lambda && lambda<=1){
         colInfo.position = p0+lambda*v;
-        colInfo.normal = -(colInfo.position - this->getCenter());
+        colInfo.normal = (colInfo.position - this->getCenter()).normalized();
         return true;
     }
     return false;
+}
+
+void ColliderSphere::resolveCollision(Particle* p, const Collision& col, double kElastic, double kFriction) const
+{
+    //define tangent plane to collision then call generic resolve
+
+    ColliderPlane plane = ColliderPlane(col.normal, -(col.normal.dot(col.position)));
+
+    plane.resolveCollision(p, col, kElastic, kFriction);
 }
 
 /*
@@ -85,7 +95,7 @@ bool ColliderSphere::testCollision(const Particle* p, Collision& colInfo) const
  */
 bool ColliderAABB::isInside(const Particle* p) const
 {
-    Vec3 position = p->pos;
+    Vec3 position = p->prevPos;
     Vec3 min = this->getMin();
     Vec3 max = this->getMax();
     //check if point is within the interval min-max for all axes
@@ -95,86 +105,77 @@ bool ColliderAABB::isInside(const Particle* p) const
     return false;
 }
 
-bool ColliderAABB::testCollision(const Particle* p, Collision& colInfo) const
+
+static bool inInterval(Vec3 pos, Vec3 min, Vec3 max) {
+    return (min.x() <= pos.x() && pos.x() <= max.x()) && (min.y() <= pos.y() && pos.y() <= max.y()) && (min.z() <= pos.z() && pos.z() <= max.z());
+}
+
+bool ColliderAABB::testCollision(const Particle* p, Collision& colInfo) const // <= this is currently broken. i hate this. very, very much.
+//particle agglomerate to the collided surface instead of bouncing off
 {
     Vec3 p0 = p->prevPos;
     Vec3 p1 = p->pos;
-    Vec3 r = p1 - p0;
+    Vec3 r = (p1 - p0);
     Vec3 r_inv = Vec3(1/r.x(),1/r.y(),1/r.z());
     Vec3 min = this->getMin();
     Vec3 max = this->getMax();
 
-    //check if ray is parallel to any of the planes of the aabb
-    if(r.x() == 0){
-        if(p0.x() <= min.x() && p0.x() >= max.x()){
-            return false;
-        }
-    }
-    if(r.y() == 0){
-        if(p0.y() <= min.y() && p0.y() >= max.y()){
-            return false;
-        }
-    }
-    if(r.z() == 0){
-        if(p0.z() <= min.z() && p0.z() >= max.z()){
-            return false;
-        }
+    double entry = 0.0;
+    double exit = 1.0;
+    Vec3 normal = Vec3(0,0,0);
+
+    //check if particle moves
+    if(r == Vec3(0,0,0)){
+        return false;
     }
 
-    //compute slab range for all axes
-    //according to wikipedia, t front and back can be computed with t = (p-o)/r
-    //we can avoid dividing by 0 by multiplying by the inverse of r instead
-    double back_x = (min.x()-p0.x())*r_inv.x();
-    double front_x = (max.x()-p0.x())*r_inv.x();
-
-    double back_y = (min.y()-p0.y())*r_inv.y();
-    double front_y = (max.y()-p0.y())*r_inv.y();
-
-    double back_z = (min.z()-p0.z())*r_inv.z();
-    double front_z = (max.z()-p0.z())*r_inv.z();
-
-    //slab segments
-    double t_close_x = std::min(back_x,front_x);
-    double t_far_x = std::max(back_x,front_x);
-
-    double t_close_y = std::min(back_y,front_y);
-    double t_far_y = std::max(back_y,front_y);
-
-    double t_close_z = std::min(back_z,front_z);
-    double t_far_z = std::max(back_z,front_z);
-
-    //intersections of slab segments
-    //for normal, get axis of smallest value
-    double t_back = std::max({t_close_x, t_close_y, t_close_z});
-    Vec3 point_back = p0 + t_back*r;
-    double t_front = std::min({t_far_x, t_far_y, t_far_z});
-    Vec3 point_front = p0 + t_front*r;
-    if(t_back <= t_front){
-        if(t_back < 0){
-            colInfo.position = point_front;
-            if(t_far_x < t_far_y && t_far_x < t_far_z){
-                colInfo.normal = Vec3(-1,0,0);
-            }
-            else if(t_far_y < t_far_x && t_far_y < t_far_z){
-                colInfo.normal = Vec3(0,-1,0);
-            }
-            else{
-                colInfo.normal = Vec3(0,0,-1);
-            }
-        }
-        else{
-            colInfo.position = point_back;
-            if(t_close_x > t_close_y && t_close_x > t_close_z){
-                colInfo.normal = Vec3(1,0,0);
-            }
-            else if(t_close_y > t_close_x && t_close_y > t_close_z){
-                colInfo.normal = Vec3(0,1,0);
-            }
-            else{
-                colInfo.normal = Vec3(0,0,1);
-            }
-        }
-        return true;
+    //both positions are inside the aabb
+    if(inInterval(p0, min, max) && inInterval(p1, min, max)){
+        return false;
     }
-    return false;
+
+    //iterate over all axes
+    for(int i = 0 ; i < 3 ; i++) {
+        // check if direction of movement is parallel to current axis
+        if(r[i] == 0) {
+            if (p0[i] < min[i] || p0[i] > max[i]) {
+                return false;
+            }
+        }
+        else { //multiply by inverse of r instead of dividing (actually useless considering i added a check for parallel case but i felt smart thinking of this so it stays)
+            double t0 = (min[i] - p0[i])*r_inv[i];
+            double t1 = (max[i] - p0[i])*r_inv[i];
+
+            if(t0 > t1) {
+                std::swap(t0, t1); //we want t1>t0, always
+            }
+
+            if (t0 > entry) {
+                entry = t0; //get point of entry
+                if(r[i]<0){ //assign normals according to direction
+                    normal[i] = 1.0;
+                }
+                else {
+                    normal[i] = -1.0;
+                }
+            }
+            exit = std::min(exit, t1); //get point of exit
+            if (entry > exit){
+                return false; //check for overlap
+            }
+        }
+    }
+    colInfo.normal = normal;
+    colInfo.position = p0 + r * entry;
+    return true;
+}
+
+
+void ColliderAABB::resolveCollision(Particle* p, const Collision& col, double kElastic, double kFriction) const
+{
+    //define tangent plane to collision then call generic resolve
+
+    ColliderPlane plane = ColliderPlane(col.normal, -(col.normal.dot(col.position)));
+
+    plane.resolveCollision(p, col, kElastic, kFriction);
 }

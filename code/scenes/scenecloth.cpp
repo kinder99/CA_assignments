@@ -74,8 +74,8 @@ void SceneCloth::initialize() {
     system.addForce(fGravity);
 
     // TODO: in my solution setup, these were the colliders
-    //colliderBall.setCenter(Vec3(40,-20,0));
-    //colliderBall.setRadius(30);
+    colliderSphere.setCenter(Vec3(40,-20,0));
+    colliderSphere.setRadius(30);
     //colliderCube.setFromCenterSize(Vec3(-60,30,0), Vec3(60, 40, 60));
     //colliderWalls.setFromCenterSize(Vec3(0, 0, 0), Vec3(200, 200, 200));
 }
@@ -436,6 +436,17 @@ void SceneCloth::paint(const Camera& camera)
 
     // TODO: draw colliders and walls
 
+    vaoSphereL->bind();
+    Vec3 cc = colliderSphere.getCenter();
+    modelMat = QMatrix4x4();
+    modelMat.translate(cc[0], cc[1], cc[2]);
+    modelMat.scale(colliderSphere.getRadius());
+    shaderPhong->setUniformValue("ModelMatrix", modelMat);
+    shaderPhong->setUniformValue("matdiff", 0.8f, 0.4f, 0.4f);
+    shaderPhong->setUniformValue("matspec", 0.0f, 0.0f, 0.0f);
+    shaderPhong->setUniformValue("matshin", 0.0f);
+    glFuncs->glDrawElements(GL_TRIANGLES, 3*numFacesSphereL, GL_UNSIGNED_INT, 0);
+
     shaderPhong->release();
 
 
@@ -515,8 +526,11 @@ void SceneCloth::update(double dt)
     relaxation(5);
 
     // collisions
+    Collision colInfo;
     for (Particle* p : system.getParticles()) {
-        // TODO: test and resolve collisions
+        if (colliderSphere.testCollision(p, colInfo)) {
+            colliderSphere.resolveCollision(p, colInfo, colBounce, colFriction);
+        }
     }
 
     // needed after we have done collisions and relaxation, since spring forces depend on p and v

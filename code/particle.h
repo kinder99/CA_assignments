@@ -3,6 +3,8 @@
 
 #include "defines.h"
 
+class Collision;
+
 class Particle
 {
 public:
@@ -17,6 +19,8 @@ public:
     double life   = 0.0;
     Vec3 color    = Vec3(1, 1, 1);
     unsigned int id = 0;
+    double pressure = 0.0;
+    double density = 0.0;
 
     Particle() {
         pos	    = Vec3(0.0, 0.0, 0.0);

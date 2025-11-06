@@ -52,12 +52,14 @@ void SceneFountain::initialize() {
     system.addForce(fGravity);
 
     // scene description
-    fountainPos = Vec3(0, 80, 0);    
-    colliderFloor.setPlane(Vec3(0, 1, 0), 0);    
+    fountainPos = Vec3(0, 80, 0);
+    colliderFloor.setPlane(Vec3(0, 1, 0), 0);
     colliderRamp.setPlane(Vec3(0, std::sqrt(3.0)/2.0, 0.5), 6);
     colliderSphere.setCenter(Vec3(0,0,0));
     colliderSphere.setRadius(20);
-    colliderBox.setFromBounds(Vec3(30,0,20), Vec3(50,10,60));
+    colliderBox.setFromBounds(Vec3(0,0,20),Vec3(50,20,60));
+
+    hash = new Hash(2, widget->getLifetime() * widget->getEmitRate(), &system);
 }
 
 
@@ -75,7 +77,6 @@ void SceneFountain::reset()
     deadParticles.clear();
 }
 
-
 void SceneFountain::updateSimParams()
 {
     // get gravity from UI and update force
@@ -84,11 +85,10 @@ void SceneFountain::updateSimParams()
 
     // get other relevant UI values and update simulation params
     kBounce = 0.5;
-    kFriction = 0.1;
-    maxParticleLife = 10.0;
-    emitRate = 100;
+    kFriction = 0.3;
+    maxParticleLife = widget->getLifetime();
+    emitRate = widget->getEmitRate();
 }
-
 
 void SceneFountain::paint(const Camera& camera) {
 
@@ -181,7 +181,6 @@ void SceneFountain::paint(const Camera& camera) {
     shader->release();
 }
 
-
 void SceneFountain::update(double dt) {
 
     // emit new particles, reuse dead ones if possible
@@ -211,6 +210,9 @@ void SceneFountain::update(double dt) {
         double z = Random::get(-20.0, 20.0);
         p->pos = Vec3(x, y, z) + fountainPos;
         p->vel = Vec3(0,0,0);
+
+        hash->setSpacing(1.2*(p->radius));
+        hash->create((int) system.getNumParticles());
     }
 
     // integration step
@@ -220,21 +222,76 @@ void SceneFountain::update(double dt) {
 
     // collisions
     Collision colInfo;
-    for (Particle* p : system.getParticles()) {
+    for(int k = 0; k<system.getNumParticles(); k++){
+        Particle* p = system.getParticle(k);
+        bool p_collision = true;
         if (colliderFloor.testCollision(p, colInfo)) {
             colliderFloor.resolveCollision(p, colInfo, kBounce, kFriction);
+            p_collision = false;
         }
         if (colliderRamp.testCollision(p, colInfo)) {
             colliderRamp.resolveCollision(p, colInfo, kBounce, kFriction);
+            p_collision = false;
         }
-    }
-
-    // check dead particles
-    for (Particle* p : system.getParticles()) {
+        if (colliderBox.testCollision(p, colInfo)) {
+            colliderBox.resolveCollision(p, colInfo, kBounce, kFriction);
+            p_collision = false;
+        }
+        if (colliderSphere.testCollision(p, colInfo)) {
+            colliderSphere.resolveCollision(p, colInfo, kBounce, kFriction);
+            p_collision = false;
+        }
+        p->color = Vec3(153/255.0, 217/255.0, 234/255.0);
         if (p->life > 0) {
             p->life -= dt;
             if (p->life < 0) {
                 deadParticles.push_back(p);
+            }
+        }
+        //clamp to avoid clipping below the horizontal plane
+        //does some weird stuff with aabb, but that's broken anyway so
+        if(p->pos.y() < 0){
+            p->pos.y() = 0;
+            p->vel.y() = -p->vel.y();
+        }
+        //particle to particle collision, check is here as a desperate stopgap because particle to particle resolution causes *a lot* of clipping with other colliders
+        if(p_collision && widget->getCollisions()){
+            hash->query(k, 2);
+            for(int nr = 0; nr<hash->getQuerySize(); nr++){
+                int j = hash->getIDs()->at(nr);
+                Particle* p2 = system.getParticle(j);
+                if(p == p2){
+                    continue;
+                }
+                if((p->prevPos - p2->prevPos).squaredNorm() < p->radius + p2->radius){
+                    p->color = Vec3(1,0,0);
+                    p2->color = Vec3(1,0,0);
+                    Vec3 d = p->prevPos - p2->prevPos;
+                    double dist = d.norm();
+                    double correction = (p->radius + p2->radius - dist) / 2;
+                    Vec3 r = p->pos - p->prevPos;
+                    Vec3 r2 = p2->pos - p2->prevPos;
+                    p->prevPos.x() += r.x() * correction;
+                    p->prevPos.y() += r.y() * correction;
+                    p->prevPos.z() += r.z() * correction;
+                    p2->prevPos.x() += r2.x() * -correction;
+                    p2->prevPos.y() += r2.y() * -correction;
+                    p2->prevPos.z() += r2.z() * -correction;
+
+                    double v1 = p->vel.dot(d);
+                    double v2 = p->vel.dot(d);
+
+                    double nv1 = (p->mass*v1 + p2->mass*v2 - p2->mass*(v1-v2)*kBounce)/(p->mass+p2->mass);
+                    double nv2 = (p->mass*v1 + p2->mass*v2 - p->mass*(v2-v1)*kBounce)/(p->mass+p2->mass);
+
+                    p->vel.x() += (nv1 - v1);
+                    p->vel.y() += (nv1 - v1);
+                    p->vel.z() += (nv1 - v1);
+
+                    p2->vel.x() += (nv2 - v2);
+                    p2->vel.y() += (nv2 - v2);
+                    p2->vel.z() += (nv2 - v2);
+                }
             }
         }
     }
@@ -264,8 +321,8 @@ void SceneFountain::mouseMoved(const QMouseEvent* e, const Camera& cam)
         else if (e->modifiers() & Qt::ShiftModifier){
             // move box
             colliderBox.setFromCenterSize(
-                        colliderBox.getCenter() + disp,
-                        colliderBox.getSize());
+                colliderBox.getCenter() + disp,
+                colliderBox.getSize());
         }
     }
 }

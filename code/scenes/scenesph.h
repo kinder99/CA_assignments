@@ -1,23 +1,22 @@
-#ifndef SCENEFOUNTAIN_H
-#define SCENEFOUNTAIN_H
+#ifndef SCENESPH_H
+#define SCENESPH_H
 
 #include <QOpenGLShaderProgram>
 #include <QOpenGLVertexArrayObject>
-#include <list>
 #include "scene.h"
-#include "widgetfountain.h"
+#include "widgetsph.h"
 #include "particlesystem.h"
 #include "integrators.h"
 #include "colliders.h"
 #include "hash.h"
+#include "sph.h"
 
-class SceneFountain : public Scene
+class SceneSPH : public Scene
 {
     Q_OBJECT
-
 public:
-    SceneFountain();
-    virtual ~SceneFountain();
+    SceneSPH();
+    virtual ~SceneSPH();
 
     virtual void initialize();
     virtual void reset();
@@ -39,7 +38,7 @@ public slots:
     void updateSimParams();
 
 protected:
-    WidgetFountain* widget = nullptr;
+    WidgetSPH* widget = nullptr;
 
     QOpenGLShaderProgram* shader = nullptr;
     QOpenGLVertexArrayObject* vaoSphereL = nullptr;
@@ -48,23 +47,20 @@ protected:
     QOpenGLVertexArrayObject* vaoFloor   = nullptr;
     unsigned int numFacesSphereL = 0, numFacesSphereH = 0;
 
-    IntegratorRK4 integrator;
+    IntegratorSymplecticEuler integrator;
     ParticleSystem system;
-    std::list<Particle*> deadParticles;
     ForceConstAcceleration* fGravity;
 
-    ColliderPlane colliderFloor, colliderRamp;
-    ColliderSphere colliderSphere;
-    ColliderAABB   colliderBox;
+    ColliderPlane colliderFloor, colliderWallNorth, colliderWallWest, colliderWallSouth, colliderWallEast;
 
     double kBounce, kFriction;
-    double emitRate;
-    double maxParticleLife;
+    double width, height, depth;
+    //double emitRate;
+    //double maxParticleLife;
 
     Hash* hash;
-
-    Vec3 fountainPos;
+    SPH* sph;
     int mouseX, mouseY;
 };
 
-#endif // SCENEFOUNTAIN_H
+#endif // SCENESPH_H
